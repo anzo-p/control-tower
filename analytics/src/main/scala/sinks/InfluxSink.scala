@@ -37,13 +37,12 @@ trait InfluxSink[T] extends RichSinkFunction[T] {
 class ResultSink[T <: InfluxdbResult] private (val influxDetails: InfluxDetails, bucket: InfluxBucket.Name) extends InfluxSink[T] {
   override def invoke(value: T, context: SinkFunction.Context): Unit = {
 
+    val httpPost = new HttpPost(baseUri + bucket.toString)
+    httpPost.setEntity(new StringEntity(value.toLineProtocol))
+    httpPost.addHeader("Authorization", s"Token $token")
+
     Try {
-      val httpPost = new HttpPost(baseUri + bucket.toString)
-      httpPost.setEntity(new StringEntity(value.toLineProtocol))
-      httpPost.addHeader("Authorization", s"Token $token")
-
       val response = httpClient.execute(httpPost)
-
       response.getStatusLine.getStatusCode match {
         case 204 =>
         case _ =>
