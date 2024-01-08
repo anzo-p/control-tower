@@ -9,6 +9,8 @@ import market_data.stock_trade.StockTradeProto
 import market_data.trade_unit.{CryptoTradeUnitProto, StockTradeUnitProto}
 import types.TimeExtensions._
 
+import java.time.OffsetDateTime
+
 object ProtobufSerdes {
 
   private def fromProtobuf(proto: MoneyProto): Money =
@@ -30,7 +32,7 @@ object ProtobufSerdes {
       lotSize  = proto.lotSize
     )
 
-  private def fromCryptoQuotationProtobuf(proto: CryptoQuotationProto, ingestTimestamp: java.time.OffsetDateTime): CryptoQuotation =
+  private def fromCryptoQuotationProtobuf(proto: CryptoQuotationProto, ingestTimestamp: OffsetDateTime): CryptoQuotation =
     CryptoQuotation(
       symbol = proto.symbol,
       bid    = fromProtobuf(proto.bid.getOrElse(throw new IllegalArgumentException("Bid data is required"))),
@@ -40,7 +42,7 @@ object ProtobufSerdes {
       ingestTimestamp = ingestTimestamp
     )
 
-  private def fromCryptoTradeProtobuf(proto: CryptoTradeProto, ingestTimestamp: java.time.OffsetDateTime): CryptoTrade =
+  private def fromProtobuf(proto: CryptoTradeProto, ingestTimestamp: OffsetDateTime): CryptoTrade =
     CryptoTrade(
       symbol  = proto.symbol,
       tradeId = proto.tradeId,
@@ -51,7 +53,7 @@ object ProtobufSerdes {
       tks             = proto.tks
     )
 
-  private def fromStockQuotationProtobuf(proto: StockQuotationProto, ingestTimestamp: java.time.OffsetDateTime): StockQuotation =
+  private def fromProtobuf(proto: StockQuotationProto, ingestTimestamp: OffsetDateTime): StockQuotation =
     StockQuotation(
       symbol = proto.symbol,
       bid    = fromProtobuf(proto.bid.getOrElse(throw new IllegalArgumentException("Bid data is required"))),
@@ -63,7 +65,7 @@ object ProtobufSerdes {
       tape            = proto.tape
     )
 
-  private def fromStockTradeProtoBuf(proto: StockTradeProto, ingestTimestamp: java.time.OffsetDateTime): StockTrade =
+  private def fromProtoBuf(proto: StockTradeProto, ingestTimestamp: OffsetDateTime): StockTrade =
     StockTrade(
       symbol  = proto.symbol,
       tradeId = proto.tradeId,
@@ -90,7 +92,7 @@ object ProtobufSerdes {
           )
 
         case MarketDataProto.MessageType.Ctm(message: CryptoTradeProto) =>
-          fromCryptoTradeProtobuf(
+          fromProtobuf(
             message,
             proto
               .ingestTimestamp
@@ -99,7 +101,7 @@ object ProtobufSerdes {
           )
 
         case MarketDataProto.MessageType.Sqm(message: StockQuotationProto) =>
-          fromStockQuotationProtobuf(
+          fromProtobuf(
             message,
             proto
               .ingestTimestamp
@@ -108,7 +110,7 @@ object ProtobufSerdes {
           )
 
         case MarketDataProto.MessageType.Stm(message: StockTradeProto) =>
-          fromStockTradeProtoBuf(
+          fromProtoBuf(
             message,
             proto
               .ingestTimestamp

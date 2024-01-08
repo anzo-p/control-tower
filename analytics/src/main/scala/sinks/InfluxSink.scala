@@ -1,47 +1,56 @@
 package sinks
 
-import org.apache.flink.configuration.Configuration
+import appconfig.InfluxDetails
 import org.apache.flink.streaming.api.functions.sink.{RichSinkFunction, SinkFunction}
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
 import processors.{InfluxdbResult, WindowedQuotationVolumes}
 
-trait InfluxSink[T] extends RichSinkFunction[T] {
-  final private val baseUrl = System.getenv().getOrDefault("INFLUXDB_URL", "http://localhost:8086")
-  final private val org     = System.getenv().getOrDefault("INFLUXDB_ORG", "")
-  final val token           = System.getenv().getOrDefault("INFLUXDB_TOKEN", "")
-  final val uriPrefix       = s"$baseUrl/api/v2/write?org=$org"
+import java.io.IOException
+import scala.util.Try
+
+object InfluxBucket extends Enumeration {
+  type Name = Value
+
+  private case class BucketName(name: String) extends super.Val(nextId, name)
+
+  val CryptoBucket: InfluxBucket.Value = BucketName("control-tower-crypto-bucket")
+  val StockBucket: InfluxBucket.Value  = BucketName("control-tower-stock-bucket")
 }
 
-class ResultSink[T <: InfluxdbResult](bucket: String) extends InfluxSink[T] {
-  @transient private var httpClient: CloseableHttpClient = _
+trait InfluxSink[T] extends RichSinkFunction[T] {
+  lazy val httpClient: CloseableHttpClient = HttpClients.createDefault()
 
-  override def open(parameters: Configuration): Unit = {
-    super.open(parameters)
-    httpClient = HttpClients.createDefault()
-  }
+  def influxDetails: InfluxDetails
+  val baseUri: String = s"${influxDetails.uri.toString}&bucket="
+  val token: String   = influxDetails.token
 
   override def close(): Unit = {
     super.close()
-    if (httpClient != null) {
-      httpClient.close()
+    Try(httpClient.close()).recover {
+      case e: IOException => println(s"Error closing HTTP client: ${e.getMessage}")
     }
   }
+}
 
+class ResultSink[T <: InfluxdbResult] private (val influxDetails: InfluxDetails, bucket: InfluxBucket.Name) extends InfluxSink[T] {
   override def invoke(value: T, context: SinkFunction.Context): Unit = {
-    val uri = List(uriPrefix, s"bucket=$bucket").mkString("&")
 
-    try {
-      val httpPost = new HttpPost(uri)
+    Try {
+      val httpPost = new HttpPost(baseUri + bucket.toString)
       httpPost.setEntity(new StringEntity(value.toLineProtocol))
       httpPost.addHeader("Authorization", s"Token $token")
 
-      println(s"{${java.time.Instant.now()}} - making request to influx: $uri - ${value.toLineProtocol}")
       val response = httpClient.execute(httpPost)
-      //println(s"{${java.time.Instant.now()}} - response from influx: ${response.getStatusLine.getStatusCode}")
-      // handle response
-    } catch {
+
+      response.getStatusLine.getStatusCode match {
+        case 204 =>
+        case _ =>
+          println(
+            s"Unexpected request from influx - code: ${response.getStatusLine.getStatusCode}, message: ${response.getStatusLine.getReasonPhrase}")
+      }
+    }.recover {
       case e: Exception => {
         println(s"error while sending data to influx: ${e.getMessage}")
       }
@@ -51,9 +60,9 @@ class ResultSink[T <: InfluxdbResult](bucket: String) extends InfluxSink[T] {
 
 object ResultSink {
 
-  def forCryptoQuotation(): ResultSink[WindowedQuotationVolumes] =
-    new ResultSink[WindowedQuotationVolumes]("control-tower-crypto-bucket")
+  def forCryptoQuotation(influxDetails: InfluxDetails): ResultSink[WindowedQuotationVolumes] =
+    new ResultSink[WindowedQuotationVolumes](influxDetails, InfluxBucket.CryptoBucket)
 
-  def forStockQuotation(): ResultSink[WindowedQuotationVolumes] =
-    new ResultSink[WindowedQuotationVolumes]("control-tower-stock-bucket")
+  def forStockQuotation(influxDetails: InfluxDetails): ResultSink[WindowedQuotationVolumes] =
+    new ResultSink[WindowedQuotationVolumes](influxDetails, InfluxBucket.StockBucket)
 }

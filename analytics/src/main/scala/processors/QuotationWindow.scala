@@ -7,7 +7,7 @@ import types.{CryptoQuotation, Quotation, StockQuotation}
 
 import java.time.{Instant, OffsetDateTime, ZoneOffset}
 
-class QuotationWindow[T <: Quotation](measurementType: WindowedVolumesMeasurementType)
+class QuotationWindow[T <: Quotation] private (measurementType: WindowedVolumesMeasurement)
     extends WindowFunction[T, WindowedQuotationVolumes, String, TimeWindow] {
   override def apply(
       key: String,

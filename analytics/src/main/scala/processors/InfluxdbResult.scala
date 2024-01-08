@@ -3,7 +3,7 @@ package processors
 import java.time.OffsetDateTime
 
 trait InfluxdbResult {
-  def measurement: WindowedVolumesMeasurementType
+  def measurement: WindowedVolumesMeasurement
   def tags: String
   def fields: String
   def toLineProtocol: String
@@ -23,7 +23,7 @@ abstract class WindowResult extends InfluxdbResult {
 }
 
 case class WindowedQuotationVolumes(
-    measurementType: WindowedVolumesMeasurementType,
+    measurementType: WindowedVolumesMeasurement,
     tagBy: Map[String, String],
     windowEndTime: OffsetDateTime,
     sumBidVolume: BigDecimal,

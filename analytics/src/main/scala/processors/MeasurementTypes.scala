@@ -1,13 +1,13 @@
 package processors
 
-sealed trait WindowedVolumesMeasurementType {
+sealed trait WindowedVolumesMeasurement {
   def value: String
 }
 
-case object WindowedStockQuotationVolumesMeasurement extends WindowedVolumesMeasurementType {
+case object WindowedStockQuotationVolumesMeasurement extends WindowedVolumesMeasurement {
   override val value = "windowed-stock-quotation-volumes"
 }
 
-case object WindowedCryptoQuotationVolumesMeasurement extends WindowedVolumesMeasurementType {
+case object WindowedCryptoQuotationVolumesMeasurement extends WindowedVolumesMeasurement {
   override val value = "windowed-crypto-quotation-volumes"
 }
